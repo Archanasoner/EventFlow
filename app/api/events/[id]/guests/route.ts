@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { apiError } from "@/lib/api-error";
 import { prisma } from "@/lib/db";
 
 type Params = {
@@ -7,28 +8,32 @@ type Params = {
 };
 
 export async function POST(request: Request, { params }: Params) {
-  const { id } = await params;
-  const body = await request.json();
-  const guest = {
-    id: randomUUID(),
-    name: body.name,
-    email: body.email || null,
-    group: body.group || "General",
-    seatItem: body.seatItem || null,
-    status: body.status || "invited",
-  };
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const guest = {
+      id: randomUUID(),
+      name: body.name,
+      email: body.email || null,
+      group: body.group || "General",
+      seatItem: body.seatItem || null,
+      status: body.status || "invited",
+    };
 
-  const event = await prisma.event.update({
-    where: { id },
-    data: {
-      guests: {
-        push: guest,
+    const event = await prisma.event.update({
+      where: { id },
+      data: {
+        guests: {
+          push: guest,
+        },
       },
-    },
-    include: {
-      owner: true,
-    },
-  });
+      include: {
+        owner: true,
+      },
+    });
 
-  return NextResponse.json(event, { status: 201 });
+    return NextResponse.json(event, { status: 201 });
+  } catch (error) {
+    return apiError(error);
+  }
 }

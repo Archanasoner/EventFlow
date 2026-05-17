@@ -76,6 +76,15 @@ const formatCurrency = (amount: number) =>
 
 const formatDateInput = (date: string) => new Date(date).toISOString().slice(0, 10);
 
+async function readApiResponse(response: Response) {
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(data?.error ?? "Request failed");
+  }
+
+  return data;
+}
+
 export default function Home() {
   const [event, setEvent] = useState<EventData | null>(null);
   const [items, setItems] = useState<LayoutItem[]>([]);
@@ -96,7 +105,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch("/api/events")
-      .then((response) => response.json())
+      .then(readApiResponse)
       .then((data: EventData) => {
         setEvent(data);
         setItems(data.layoutItems);
@@ -107,7 +116,7 @@ export default function Home() {
         setSelectedId(data.layoutItems[0]?.id ?? null);
         setStatus("Synced");
       })
-      .catch(() => setStatus("Could not load event"));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "Could not load event"));
   }, []);
 
   const selected = items.find((item) => item.id === selectedId) ?? null;
@@ -170,89 +179,110 @@ export default function Home() {
   }
 
   async function saveLayout() {
-    if (!event) return;
+    if (!event) {
+      setStatus("Event not loaded");
+      return;
+    }
     setStatus("Saving");
-    const response = await fetch(`/api/events/${event.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ layoutItems: items }),
-    });
-    const data = await response.json();
-    setEvent(data);
-    setItems(data.layoutItems);
-    setStatus("Saved");
+    try {
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layoutItems: items }),
+      });
+      const data = await readApiResponse(response);
+      setEvent(data);
+      setItems(data.layoutItems);
+      setStatus("Saved");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Save failed");
+    }
   }
 
   async function saveEventDetails(formEvent: FormEvent) {
     formEvent.preventDefault();
     if (!event) return;
     setStatus("Saving details");
-    const response = await fetch(`/api/events/${event.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: eventTitle.trim() || event.title,
-        venue: eventVenue.trim() || event.venue,
-        date: eventDate,
-        budgetLimit: Number(eventBudget || event.budgetLimit),
-      }),
-    });
-    if (!response.ok) {
-      setStatus("Details save failed");
-      return;
+    try {
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: eventTitle.trim() || event.title,
+          venue: eventVenue.trim() || event.venue,
+          date: eventDate,
+          budgetLimit: Number(eventBudget || event.budgetLimit),
+        }),
+      });
+      const updatedEvent = await readApiResponse(response);
+      setEvent(updatedEvent);
+      setEventTitle(updatedEvent.title);
+      setEventVenue(updatedEvent.venue);
+      setEventDate(formatDateInput(updatedEvent.date));
+      setEventBudget(String(updatedEvent.budgetLimit));
+      setStatus("Details saved");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Details save failed");
     }
-    const updatedEvent = await response.json();
-    setEvent(updatedEvent);
-    setEventTitle(updatedEvent.title);
-    setEventVenue(updatedEvent.venue);
-    setEventDate(formatDateInput(updatedEvent.date));
-    setEventBudget(String(updatedEvent.budgetLimit));
-    setStatus("Details saved");
   }
 
   async function addGuest(formEvent: FormEvent) {
     formEvent.preventDefault();
-    if (!event || !guestName.trim()) return;
-    setIsAddingGuest(true);
-    setStatus("Adding guest");
-    const response = await fetch(`/api/events/${event.id}/guests`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: guestName, group: selected?.label ?? "General", seatItem: selected?.label }),
-    });
-    if (!response.ok) {
-      setStatus("Guest add failed");
-      setIsAddingGuest(false);
+    if (!event) {
+      setStatus("Event still loading");
       return;
     }
-    const updatedEvent = await response.json();
-    setEvent(updatedEvent);
-    setGuestName("");
-    setIsAddingGuest(false);
-    setStatus("Guest added");
+    if (!guestName.trim()) {
+      setStatus("Enter guest name");
+      return;
+    }
+    setIsAddingGuest(true);
+    setStatus("Adding guest");
+    try {
+      const response = await fetch(`/api/events/${event.id}/guests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: guestName.trim(), group: selected?.label ?? "General", seatItem: selected?.label }),
+      });
+      const updatedEvent = await readApiResponse(response);
+      setEvent(updatedEvent);
+      setGuestName("");
+      setStatus("Guest added");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Guest add failed");
+    } finally {
+      setIsAddingGuest(false);
+    }
   }
 
   async function addVendor(formEvent: FormEvent) {
     formEvent.preventDefault();
-    if (!event || !vendorName.trim()) return;
-    setIsAddingVendor(true);
-    setStatus("Adding vendor");
-    const response = await fetch(`/api/events/${event.id}/vendors`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: vendorName, category: "Custom", cost: Number(vendorCost || 0) }),
-    });
-    if (!response.ok) {
-      setStatus("Vendor add failed");
-      setIsAddingVendor(false);
+    if (!event) {
+      setStatus("Event still loading");
       return;
     }
-    const updatedEvent = await response.json();
-    setEvent(updatedEvent);
-    setVendorName("");
-    setVendorCost("");
-    setIsAddingVendor(false);
-    setStatus("Vendor added");
+    if (!vendorName.trim()) {
+      setStatus("Enter vendor name");
+      return;
+    }
+    setIsAddingVendor(true);
+    setStatus("Adding vendor");
+    try {
+      const response = await fetch(`/api/events/${event.id}/vendors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: vendorName.trim(), category: "Custom", cost: Number(vendorCost || 0) }),
+      });
+      const updatedEvent = await readApiResponse(response);
+      setEvent(updatedEvent);
+      setVendorName("");
+      setVendorCost("");
+      setStatus("Vendor added");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Vendor add failed");
+    } finally {
+      setIsAddingVendor(false);
+    }
   }
 
   function exportJson() {
@@ -455,7 +485,7 @@ export default function Home() {
           </div>
           <form className="inlineForm" onSubmit={addGuest}>
             <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Guest name" />
-            <button type="submit" disabled={isAddingGuest || !guestName.trim()}>
+            <button type="submit" disabled={isAddingGuest}>
               <Plus size={16} />
               <span>Add</span>
             </button>
@@ -481,7 +511,7 @@ export default function Home() {
           <form className="vendorForm" onSubmit={addVendor}>
             <input value={vendorName} onChange={(event) => setVendorName(event.target.value)} placeholder="Vendor" />
             <input value={vendorCost} onChange={(event) => setVendorCost(event.target.value)} placeholder="Cost" type="number" />
-            <button type="submit" disabled={isAddingVendor || !vendorName.trim()}>
+            <button type="submit" disabled={isAddingVendor}>
               <Plus size={16} />
               <span>Add</span>
             </button>
