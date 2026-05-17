@@ -90,6 +90,8 @@ export default function Home() {
   const [eventVenue, setEventVenue] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventBudget, setEventBudget] = useState("");
+  const [isAddingGuest, setIsAddingGuest] = useState(false);
+  const [isAddingVendor, setIsAddingVendor] = useState(false);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -211,6 +213,7 @@ export default function Home() {
   async function addGuest(formEvent: FormEvent) {
     formEvent.preventDefault();
     if (!event || !guestName.trim()) return;
+    setIsAddingGuest(true);
     setStatus("Adding guest");
     const response = await fetch(`/api/events/${event.id}/guests`, {
       method: "POST",
@@ -219,17 +222,20 @@ export default function Home() {
     });
     if (!response.ok) {
       setStatus("Guest add failed");
+      setIsAddingGuest(false);
       return;
     }
     const updatedEvent = await response.json();
     setEvent(updatedEvent);
     setGuestName("");
+    setIsAddingGuest(false);
     setStatus("Guest added");
   }
 
   async function addVendor(formEvent: FormEvent) {
     formEvent.preventDefault();
     if (!event || !vendorName.trim()) return;
+    setIsAddingVendor(true);
     setStatus("Adding vendor");
     const response = await fetch(`/api/events/${event.id}/vendors`, {
       method: "POST",
@@ -238,12 +244,14 @@ export default function Home() {
     });
     if (!response.ok) {
       setStatus("Vendor add failed");
+      setIsAddingVendor(false);
       return;
     }
     const updatedEvent = await response.json();
     setEvent(updatedEvent);
     setVendorName("");
     setVendorCost("");
+    setIsAddingVendor(false);
     setStatus("Vendor added");
   }
 
@@ -447,12 +455,13 @@ export default function Home() {
           </div>
           <form className="inlineForm" onSubmit={addGuest}>
             <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Guest name" />
-            <button type="submit">
+            <button type="submit" disabled={isAddingGuest || !guestName.trim()}>
               <Plus size={16} />
+              <span>Add</span>
             </button>
           </form>
           <div className="list">
-            {event?.guests.slice(0, 6).map((guest) => (
+            {event?.guests.map((guest) => (
               <div key={guest.id} className="row">
                 <Armchair size={15} />
                 <div>
@@ -472,12 +481,13 @@ export default function Home() {
           <form className="vendorForm" onSubmit={addVendor}>
             <input value={vendorName} onChange={(event) => setVendorName(event.target.value)} placeholder="Vendor" />
             <input value={vendorCost} onChange={(event) => setVendorCost(event.target.value)} placeholder="Cost" type="number" />
-            <button type="submit">
+            <button type="submit" disabled={isAddingVendor || !vendorName.trim()}>
               <Plus size={16} />
+              <span>Add</span>
             </button>
           </form>
           <div className="list">
-            {event?.vendors.slice(0, 5).map((vendor) => (
+            {event?.vendors.map((vendor) => (
               <div key={vendor.id} className="row">
                 <div>
                   <strong>{vendor.name}</strong>

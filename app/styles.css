@@ -329,12 +329,18 @@ input {
 
 .inlineForm {
   display: grid;
-  grid-template-columns: 1fr 42px;
+  grid-template-columns: 1fr 82px;
   gap: 8px;
 }
 
 .vendorForm {
-  grid-template-columns: 1fr 82px 42px;
+  grid-template-columns: 1fr 82px 82px;
+}
+
+.inlineForm button:disabled,
+.vendorForm button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .list {
