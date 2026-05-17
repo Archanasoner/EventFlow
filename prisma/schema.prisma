@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  events    Event[]
+  createdAt DateTime @default(now())
+}
+
+model Event {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  date          DateTime
+  venue         String
+  budgetLimit   Int
+  ownerId       String         @db.ObjectId
+  owner         User           @relation(fields: [ownerId], references: [id])
+  layoutItems   LayoutItem[]
+  guests        Guest[]
+  vendors       Vendor[]
+  collaborators Collaborator[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+type LayoutItem {
+  id       String
+  type     String
+  label    String
+  x        Int
+  y        Int
+  width    Int
+  height   Int
+  rotation Int    @default(0)
+  color    String
+  cost     Int    @default(0)
+}
+
+type Guest {
+  id       String
+  name     String
+  email    String?
+  group    String
+  seatItem String?
+  status   String  @default("invited")
+}
+
+type Vendor {
+  id       String
+  name     String
+  category String
+  cost     Int
+  status   String @default("quoted")
+}
+
+type Collaborator {
+  id      String
+  email   String
+  role    String @default("viewer")
+}
