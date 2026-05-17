@@ -198,6 +198,37 @@ export default function Home() {
       setStatus(error instanceof Error ? error.message : "Save failed");
     }
   }
+  async function createNewEvent() {
+  try {
+    const response = await fetch("/api/events", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "New Event",
+        venue: "Venue",
+        date: new Date(),
+        budgetLimit: 50000,
+      }),
+    });
+
+    const data = await readApiResponse(response);
+
+    setEvent(data);
+    setItems([]);
+    setSelectedId(null);
+
+    setEventTitle(data.title);
+    setEventVenue(data.venue);
+    setEventDate(formatDateInput(data.date));
+    setEventBudget(String(data.budgetLimit));
+
+    setStatus("New event created");
+  } catch (error) {
+    setStatus("Could not create event");
+  }
+}
 
   async function saveEventDetails(formEvent: FormEvent) {
     formEvent.preventDefault();
@@ -393,6 +424,10 @@ export default function Home() {
               <Download size={17} />
               Export
             </button>
+            <button onClick={createNewEvent}>
+              <Plus size={17} />
+              New Event
+            </button>
             <button className="primary" onClick={saveLayout}>
               <Save size={17} />
               Save
@@ -491,7 +526,7 @@ export default function Home() {
             </button>
           </form>
           <div className="list">
-            {event?.guests.map((guest) => (
+            {event?.guests?.map((guest) => (
               <div key={guest.id} className="row">
                 <Armchair size={15} />
                 <div>
@@ -517,7 +552,7 @@ export default function Home() {
             </button>
           </form>
           <div className="list">
-            {event?.vendors.map((vendor) => (
+            {event?.vendors?.map((vendor) => (
               <div key={vendor.id} className="row">
                 <div>
                   <strong>{vendor.name}</strong>
@@ -532,3 +567,4 @@ export default function Home() {
     </main>
   );
 }
+

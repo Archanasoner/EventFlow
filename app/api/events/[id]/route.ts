@@ -44,3 +44,26 @@ export async function PATCH(request: Request, { params }: Params) {
     return apiError(error);
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    const newEvent = await prisma.event.create({
+      data: {
+        title: body.title,
+        venue: body.venue,
+        date: new Date(body.date),
+        budgetLimit: body.budgetLimit,
+        layoutItems: [],
+      },
+    });
+
+    return Response.json(newEvent);
+  } catch (error) {
+    return Response.json(
+      { error: "Failed to create event" },
+      { status: 500 }
+    );
+  }
+}
