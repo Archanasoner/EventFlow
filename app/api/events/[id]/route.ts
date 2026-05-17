@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         date: new Date(body.date),
         budgetLimit: body.budgetLimit,
         layoutItems: [],
+        owner:"Archana",
       },
     });
 
