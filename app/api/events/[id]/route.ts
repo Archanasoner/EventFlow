@@ -15,6 +15,7 @@ export async function PATCH(request: Request, { params }: Params) {
     data: {
       title: body.title,
       venue: body.venue,
+      date: body.date === undefined ? undefined : new Date(body.date),
       budgetLimit: body.budgetLimit === undefined ? undefined : Number(body.budgetLimit),
       layoutItems: Array.isArray(body.layoutItems)
         ? body.layoutItems.map((item: any) => ({

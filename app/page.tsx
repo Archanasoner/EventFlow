@@ -8,6 +8,7 @@ import {
   Download,
   Grid2X2,
   Hand,
+  MapPin,
   Plus,
   RotateCcw,
   Save,
@@ -73,6 +74,8 @@ const formatCurrency = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
+const formatDateInput = (date: string) => new Date(date).toISOString().slice(0, 10);
+
 export default function Home() {
   const [event, setEvent] = useState<EventData | null>(null);
   const [items, setItems] = useState<LayoutItem[]>([]);
@@ -83,6 +86,10 @@ export default function Home() {
   const [guestName, setGuestName] = useState("");
   const [vendorName, setVendorName] = useState("");
   const [vendorCost, setVendorCost] = useState("");
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventVenue, setEventVenue] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventBudget, setEventBudget] = useState("");
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -91,6 +98,10 @@ export default function Home() {
       .then((data: EventData) => {
         setEvent(data);
         setItems(data.layoutItems);
+        setEventTitle(data.title);
+        setEventVenue(data.venue);
+        setEventDate(formatDateInput(data.date));
+        setEventBudget(String(data.budgetLimit));
         setSelectedId(data.layoutItems[0]?.id ?? null);
         setStatus("Synced");
       })
@@ -168,6 +179,33 @@ export default function Home() {
     setEvent(data);
     setItems(data.layoutItems);
     setStatus("Saved");
+  }
+
+  async function saveEventDetails(formEvent: FormEvent) {
+    formEvent.preventDefault();
+    if (!event) return;
+    setStatus("Saving details");
+    const response = await fetch(`/api/events/${event.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: eventTitle.trim() || event.title,
+        venue: eventVenue.trim() || event.venue,
+        date: eventDate,
+        budgetLimit: Number(eventBudget || event.budgetLimit),
+      }),
+    });
+    if (!response.ok) {
+      setStatus("Details save failed");
+      return;
+    }
+    const updatedEvent = await response.json();
+    setEvent(updatedEvent);
+    setEventTitle(updatedEvent.title);
+    setEventVenue(updatedEvent.venue);
+    setEventDate(formatDateInput(updatedEvent.date));
+    setEventBudget(String(updatedEvent.budgetLimit));
+    setStatus("Details saved");
   }
 
   async function addGuest(formEvent: FormEvent) {
@@ -354,6 +392,42 @@ export default function Home() {
       </section>
 
       <aside className="rightRail">
+        <section className="panel">
+          <div className="panelTitle">
+            <MapPin size={18} />
+            <h2>Event Details</h2>
+          </div>
+          <form className="detailsForm" onSubmit={saveEventDetails}>
+            <label>
+              Title
+              <input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} placeholder="Event title" />
+            </label>
+            <label>
+              Venue
+              <input value={eventVenue} onChange={(event) => setEventVenue(event.target.value)} placeholder="Venue name" />
+            </label>
+            <div className="split">
+              <label>
+                Date
+                <input type="date" value={eventDate} onChange={(event) => setEventDate(event.target.value)} />
+              </label>
+              <label>
+                Budget
+                <input
+                  type="number"
+                  value={eventBudget}
+                  onChange={(event) => setEventBudget(event.target.value)}
+                  placeholder="Budget"
+                />
+              </label>
+            </div>
+            <button className="wideButton" type="submit">
+              <Save size={16} />
+              Save Details
+            </button>
+          </form>
+        </section>
+
         <section className="metric">
           <div className="panelTitle">
             <CircleDollarSign size={18} />
