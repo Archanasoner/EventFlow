@@ -18,14 +18,17 @@ export async function POST(request: Request, { params }: Params) {
     status: body.status || "invited",
   };
 
-  await prisma.event.update({
+  const event = await prisma.event.update({
     where: { id },
     data: {
       guests: {
         push: guest,
       },
     },
+    include: {
+      owner: true,
+    },
   });
 
-  return NextResponse.json(guest, { status: 201 });
+  return NextResponse.json(event, { status: 201 });
 }

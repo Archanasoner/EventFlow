@@ -17,14 +17,17 @@ export async function POST(request: Request, { params }: Params) {
     status: body.status || "quoted",
   };
 
-  await prisma.event.update({
+  const event = await prisma.event.update({
     where: { id },
     data: {
       vendors: {
         push: vendor,
       },
     },
+    include: {
+      owner: true,
+    },
   });
 
-  return NextResponse.json(vendor, { status: 201 });
+  return NextResponse.json(event, { status: 201 });
 }

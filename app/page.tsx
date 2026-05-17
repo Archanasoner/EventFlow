@@ -173,28 +173,40 @@ export default function Home() {
   async function addGuest(formEvent: FormEvent) {
     formEvent.preventDefault();
     if (!event || !guestName.trim()) return;
+    setStatus("Adding guest");
     const response = await fetch(`/api/events/${event.id}/guests`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: guestName, group: selected?.label ?? "General", seatItem: selected?.label }),
     });
-    const guest = await response.json();
-    setEvent({ ...event, guests: [guest, ...event.guests] });
+    if (!response.ok) {
+      setStatus("Guest add failed");
+      return;
+    }
+    const updatedEvent = await response.json();
+    setEvent(updatedEvent);
     setGuestName("");
+    setStatus("Guest added");
   }
 
   async function addVendor(formEvent: FormEvent) {
     formEvent.preventDefault();
     if (!event || !vendorName.trim()) return;
+    setStatus("Adding vendor");
     const response = await fetch(`/api/events/${event.id}/vendors`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: vendorName, category: "Custom", cost: Number(vendorCost || 0) }),
     });
-    const vendor = await response.json();
-    setEvent({ ...event, vendors: [vendor, ...event.vendors] });
+    if (!response.ok) {
+      setStatus("Vendor add failed");
+      return;
+    }
+    const updatedEvent = await response.json();
+    setEvent(updatedEvent);
     setVendorName("");
     setVendorCost("");
+    setStatus("Vendor added");
   }
 
   function exportJson() {
@@ -361,7 +373,7 @@ export default function Home() {
           </div>
           <form className="inlineForm" onSubmit={addGuest}>
             <input value={guestName} onChange={(event) => setGuestName(event.target.value)} placeholder="Guest name" />
-            <button>
+            <button type="submit">
               <Plus size={16} />
             </button>
           </form>
@@ -386,7 +398,7 @@ export default function Home() {
           <form className="vendorForm" onSubmit={addVendor}>
             <input value={vendorName} onChange={(event) => setVendorName(event.target.value)} placeholder="Vendor" />
             <input value={vendorCost} onChange={(event) => setVendorCost(event.target.value)} placeholder="Cost" type="number" />
-            <button>
+            <button type="submit">
               <Plus size={16} />
             </button>
           </form>
